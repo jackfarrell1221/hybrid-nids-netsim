@@ -12,16 +12,20 @@ export default function AlertsPage() {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const { addToast } = useToast();
 
+  const [error, setError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     try {
-      const data = await api.alerts(100);
+      setError(null);
+      const data = await api.alerts(500);
       setAlerts(data.alerts ?? []);
-    } catch {
-      // ignore
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to load alerts from backend.');
     } finally {
       setLoading(false);
     }
   }, []);
+
 
   useEffect(() => {
     load();
@@ -51,7 +55,17 @@ export default function AlertsPage() {
         <p className="text-sm text-soc-text-secondary mt-0.5">
           All detected intrusions, filterable by severity and attack type with live triage status
         </p>
-      </div>
+      {error && (
+        <div className="bg-soc-danger/10 border border-soc-danger/40 text-soc-danger px-4 py-3 rounded text-xs flex items-center justify-between">
+          <span>Failed to fetch alerts from backend: {error}</span>
+          <button
+            onClick={() => { setLoading(true); load(); }}
+            className="px-2.5 py-1 bg-soc-danger/20 hover:bg-soc-danger/30 rounded font-semibold uppercase text-[10px] transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <AlertTable alerts={alerts} onSelectAlert={setSelectedAlert} />
 
