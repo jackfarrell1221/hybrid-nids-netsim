@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "timestamp": "2026-10-11T18:07:43.709013+00:00",
+    "test_samples": 3985,
+    "disclaimer": "This is a proof-of-concept NIDS evaluated using a controlled network environment across all 20 scenarios. Metrics reflect held-out evaluation data."
+  },
+  "metrics": {
+    "precision": 0.9702,
+    "recall": 1.0,
+    "f1_score": 0.9849,
+    "accuracy": 0.9859,
+    "avg_latency_ms": 163.073
+  },
+  "confusion_matrix": {
+    "labels": [
+      "NORMAL",
+      "INTRUSION"
+    ],
+    "matrix": [
+      [
+        2105,
+        56
+      ],
+      [
+        0,
+        1824
+      ]
+    ]
+  },
+  "classification_report": {
+    "NORMAL": {
+      "precision": 1.0,
+      "recall": 0.974086071263304,
+      "f1-score": 0.9868729488982654,
+      "support": 2161.0
+    },
+    "INTRUSION": {
+      "precision": 0.9702127659574468,
+      "recall": 1.0,
+      "f1-score": 0.9848812095032398,
+      "support": 1824.0
+    },
+    "accuracy": 0.9859473023839398,
+    "macro avg": {
+      "precision": 0.9851063829787234,
+      "recall": 0.987043035631652,
+      "f1-score": 0.9858770792007525,
+      "support": 3985.0
+    },
+    "weighted avg": {
+      "precision": 0.9863658933767586,
+      "recall": 0.9859473023839398,
+      "f1-score": 0.9859612970396638,
+      "support": 3985.0
+    }
+  },
+  "counts": {
+    "total": 3985,
+    "normal_predicted": 2105,
+    "intrusion_predicted": 1880,
+    "rule_detections": 1880,
+    "ml_detections": 2105
+  }
+}

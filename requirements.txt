@@ -1,0 +1,20 @@
+# Hybrid NIDS — Python dependencies
+# Install with: pip install -r requirements.txt
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+Flask
+flask-cors
+gunicorn
+
+# ── Machine Learning ──────────────────────────────────────────────────────────
+scikit-learn
+numpy
+pandas
+joblib
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest
+pytest-flask
+
+# ── HTTP client (for CLI simulator script) ────────────────────────────────────
+requests
