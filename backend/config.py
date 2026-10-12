@@ -25,7 +25,10 @@ FLASK_PORT  = int(os.environ.get("FLASK_PORT", 5001))
 FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 
 # ── Database ──────────────────────────────────────────────────────────────────
-DATABASE_PATH = os.environ.get("DATABASE_PATH", os.path.join(DATA_DIR, "nids.db"))
+# In Vercel serverless functions, only /tmp is writable
+_default_db = "/tmp/nids.db" if os.environ.get("VERCEL") else os.path.join(DATA_DIR, "nids.db")
+DATABASE_PATH = os.environ.get("DATABASE_PATH", _default_db)
+
 
 # ── ML model ──────────────────────────────────────────────────────────────────
 MODEL_PATH   = os.environ.get("MODEL_PATH", os.path.join(MODEL_DIR, "rf_model.joblib"))
