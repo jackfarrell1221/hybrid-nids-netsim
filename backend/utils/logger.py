@@ -22,9 +22,17 @@ class SafeStreamHandler(logging.StreamHandler):
     """Stream handler that safely ignores writes to closed streams during test teardown."""
     def emit(self, record):
         try:
+            if self.stream is None or getattr(self.stream, "closed", False):
+                return
             super().emit(record)
         except (ValueError, IOError, OSError):
             pass
+
+    def handleError(self, record):
+        _, exc_value, _ = sys.exc_info()
+        if isinstance(exc_value, (ValueError, IOError, OSError)):
+            return
+        super().handleError(record)
 
 
 def setup_logging(level: str = "INFO") -> None:
