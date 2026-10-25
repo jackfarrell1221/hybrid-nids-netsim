@@ -93,39 +93,79 @@ The Flask backend (`http://localhost:5000`) provides the following REST API endp
 
 ---
 
-## 5. NetSim Dataset Processing & Deployment
+## 5. ⚡ Quick Start (Run Locally in 2 Minutes)
 
-### 1. Extract NetSim Traces & PCAP Packets
-The system parses 17 raw NetSim simulation CSVs (`normal/`, `DoS/`, `Data theft/`, `Exfiltration/`) and 3 Wireshark PCAPs (`portscan/`):
-```bash
-# Build unified master NetSim flow dataset (5,421 flows extracted)
-python scripts/build_netsim_dataset.py
+### Prerequisites
+- **Python 3.9+** ([python.org](https://www.python.org/))
+- **Node.js 18+ & npm** ([nodejs.org](https://nodejs.org/))
 
-# Train ML detector on NetSim training split
-python -c "from backend.models.model_manager import train_model; print(train_model())"
-
-# Seed SQLite database with representative NetSim alerts
-python scripts/seed_netsim_db.py
-```
-
-### 2. Run Flask Server (Port 5001)
-```bash
-python backend/app.py
-```
-
-### 3. Run Frontend SOC Workstation (Port 5174)
-```bash
-cd frontend
-npm run dev
-```
-
-Dashboard is available at **http://localhost:5174**.
+> [!NOTE]
+> **Zero Prior Setup Required:** Pre-trained Random Forest and Isolation Forest models (`models/rf_model.joblib`) are already bundled. The SQLite database initializes automatically upon start. No WinPcap/Npcap drivers or root privileges are required to use the Zero-Admin live NIC sniffer.
 
 ---
 
-## 6. Automated Testing & NetSim Benchmark Evaluation
+### Option A: One-Click Launchers
 
-### Run Test Suite (65/65 Tests Passing)
+#### On Windows:
+Double-click `start.bat` or run:
+```cmd
+start.bat
+```
+
+#### On macOS / Linux:
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+---
+
+### Option B: Manual Launch (Two Terminals)
+
+#### 1. Start the Flask Backend (Port 5001)
+```bash
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Start backend server
+python backend/app.py
+```
+
+#### 2. Start the Frontend SOC Workstation (Port 5174)
+```bash
+cd frontend
+
+# Install node dependencies
+npm install
+
+# Start Vite development server
+npm run dev
+```
+
+Open your browser to: **http://localhost:5174**
+
+---
+
+## 6. Optional: Database Seeding & NetSim Processing
+
+If you wish to re-seed the SQLite database with 496 historical NetSim attack traces or retrain the machine learning model from scratch:
+
+```bash
+# Seed SQLite database with representative NetSim alerts
+python scripts/seed_netsim_db.py
+
+# (Optional) Retrain ML detector on NetSim training split
+python -c "from backend.models.model_manager import train_model; print(train_model())"
+
+# (Optional) Rebuild master NetSim flow dataset from raw CSV/PCAP traces
+python scripts/build_netsim_dataset.py
+```
+
+---
+
+## 7. Automated Testing & NetSim Benchmark Evaluation
+
+### Run Test Suite (73/73 Tests Passing)
 ```bash
 pytest tests/ -v
 ```
