@@ -55,6 +55,8 @@ export default function AlertsPage() {
         <p className="text-sm text-soc-text-secondary mt-0.5">
           All detected intrusions, filterable by severity and attack type with live triage status
         </p>
+      </div>
+
       {error && (
         <div className="bg-soc-danger/10 border border-soc-danger/40 text-soc-danger px-4 py-3 rounded text-xs flex items-center justify-between">
           <span>Failed to fetch alerts from backend: {error}</span>

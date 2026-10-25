@@ -101,6 +101,12 @@ class TestDoSRule:
         assert result is not None
         assert result["attack_type"] == "DOS"
 
+    def test_does_not_fire_on_small_handshake(self):
+        # A tiny 104-byte connection with 0 dst_bytes must NOT trigger DoS
+        result = check(flow(0.1, 104, 0))
+        if result is not None:
+            assert result["attack_type"] != "DOS"
+
 
 # ── Rule 4: Data Theft ────────────────────────────────────────────────────────
 class TestDataTheftRule:
@@ -121,6 +127,12 @@ class TestDataTheftRule:
         result = check(flow(10, 0, 50_000))
         assert result is not None
         assert result["attack_type"] == "DATA_THEFT"
+
+    def test_does_not_fire_on_small_response(self):
+        # A tiny response under 1000 bytes must NOT trigger Data Theft
+        result = check(flow(0.1, 0, 104))
+        if result is not None:
+            assert result["attack_type"] != "DATA_THEFT"
 
 
 # ── Normal traffic ────────────────────────────────────────────────────────────

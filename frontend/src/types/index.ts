@@ -35,6 +35,10 @@ export interface DetectionResult {
   anomaly_score?: number;
   message: string;
   scenario?: string;
+  src_ip?: string;
+  dst_ip?: string;
+  mitre?: { id: string; name: string; tactic: string };
+  mitigation?: { powershell?: string; iptables?: string; status?: string };
 }
 
 export interface Alert {
@@ -221,3 +225,103 @@ export interface ToastMessage {
   message?: string;
   timestamp: number;
 }
+
+// ── Live Physical NIC Sniffer & Dissection Types ────────────────────────────
+
+export type SnifferEngineType = 'ZERO_ADMIN_TELEMETRY' | 'ELEVATED_RAW_SOCKET';
+
+export interface NetworkInterface {
+  name: string;
+  ip: string;
+  mac: string | null;
+  is_up: boolean;
+  speed_mbps: number;
+  is_default: boolean;
+  is_virtual: boolean;
+  bytes_sent: number;
+  bytes_recv: number;
+}
+
+export interface DecodedHeaders {
+  frame: {
+    length: number;
+    interface: string;
+    protocols: string;
+  };
+  ipv4: {
+    version: number;
+    header_length: number;
+    tos: string;
+    total_length: number;
+    identification: string;
+    flags: {
+      df: boolean;
+      mf: boolean;
+      raw: string;
+    };
+    ttl: number;
+    protocol: string;
+    checksum: string;
+    src_ip: string;
+    dst_ip: string;
+  };
+  transport: {
+    type: string;
+    src_port: number;
+    dst_port: number;
+    service_name: string;
+    seq_number: number;
+    ack_number: number | null;
+    flags: string;
+    window_size: number | null;
+    checksum: string;
+  };
+}
+
+export interface CapturedPacket {
+  id: number;
+  timestamp: string;
+  interface: string;
+  engine: SnifferEngineType;
+  src_ip: string;
+  dst_ip: string;
+  src_port: number;
+  dst_port: number;
+  protocol: 'TCP' | 'UDP' | 'ICMP' | 'OTHER';
+  tcp_state: string;
+  length: number;
+  delta_bytes: number;
+  hostname: string | null;
+  provider: string | null;
+  provider_tag: string | null;
+  headers: DecodedHeaders;
+  hex_dump: string;
+  raw_hex: string;
+  payload_preview: string;
+  verdict: DetectionResult;
+}
+
+export interface SnifferStatus {
+  is_sniffing: boolean;
+  is_elevated: boolean;
+  active_engine: SnifferEngineType;
+  engine_display_name: string;
+  active_interface: NetworkInterface | null;
+  default_route_ip: string;
+  total_packets: number;
+  total_intrusions: number;
+  current_throughput_kbps_in: number;
+  current_throughput_kbps_out: number;
+  current_pps: number;
+}
+
+export interface TimelineMetricPoint {
+  time: string;
+  timestamp: number;
+  kbps_in: number;
+  kbps_out: number;
+  pps: number;
+  alerts: number;
+  severity: Severity;
+}
+

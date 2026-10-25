@@ -71,7 +71,7 @@ class MLDetector:
 
     # ── Prediction ────────────────────────────────────────────────────────────
 
-    def predict(self, flow: Dict[str, float]) -> Dict[str, Any]:
+    def predict(self, flow: Dict[str, Any]) -> Dict[str, Any]:
         """
         Run the Isolation Forest on a single network flow.
 
@@ -81,7 +81,7 @@ class MLDetector:
         Returns:
             A detection result dict.
         """
-        if not self.is_ready:
+        if not self.is_ready or self._model is None:
             # Model not available — return a safe fallback
             return {
                 "status": "UNKNOWN",
@@ -95,16 +95,18 @@ class MLDetector:
                 ),
             }
 
-        # Build feature vector in the correct column order
-        feature_vector = np.array([[flow[col] for col in FEATURE_COLUMNS]])
+        model = self._model
+
+        # Build feature vector in the correct column order with defensive defaults
+        feature_vector = np.array([[float(flow.get(col, 0.0)) for col in FEATURE_COLUMNS]])
 
         t0 = time.monotonic()
-        raw_prediction = self._model.predict(feature_vector)[0]
+        raw_prediction = model.predict(feature_vector)[0]
         
-        if hasattr(self._model, "predict_proba"):
-            anomaly_score = float(self._model.predict_proba(feature_vector)[0][1])
+        if hasattr(model, "predict_proba"):
+            anomaly_score = float(model.predict_proba(feature_vector)[0][1])
         else:
-            anomaly_score = float(self._model.score_samples(feature_vector)[0])
+            anomaly_score = float(model.score_samples(feature_vector)[0])
             raw_prediction = 1 if raw_prediction == -1 else 0
         latency_ms     = (time.monotonic() - t0) * 1000
 

@@ -14,6 +14,11 @@ import type {
   EvaluationResult,
   DatasetValidationResult,
   CustomDatasetEvaluationResult,
+  SnifferStatus,
+  NetworkInterface,
+  CapturedPacket,
+  TimelineMetricPoint,
+  SnifferEngineType,
 } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? '';
@@ -153,6 +158,53 @@ export const api = {
     return fetchJSON<{ status: string }>(`/api/alerts/${alertId}/triage`, {
       method: 'PUT',
       body: JSON.stringify({ triage_status: triageStatus }),
+    });
+  },
+
+  /** GET /api/sniffer/status — fetch sniffer operational status */
+  snifferStatus(): Promise<SnifferStatus> {
+    return fetchJSON<SnifferStatus>('/api/sniffer/status');
+  },
+
+  /** GET /api/sniffer/interfaces — list available interfaces with default prioritized */
+  snifferInterfaces(): Promise<{ interfaces: NetworkInterface[] }> {
+    return fetchJSON<{ interfaces: NetworkInterface[] }>('/api/sniffer/interfaces');
+  },
+
+  /** POST /api/sniffer/start — start wire packet ingestion */
+  startSniffer(interfaceName?: string): Promise<SnifferStatus> {
+    return fetchJSON<SnifferStatus>('/api/sniffer/start', {
+      method: 'POST',
+      body: JSON.stringify({ interface: interfaceName }),
+    });
+  },
+
+  /** POST /api/sniffer/stop — stop wire packet ingestion */
+  stopSniffer(): Promise<SnifferStatus> {
+    return fetchJSON<SnifferStatus>('/api/sniffer/stop', {
+      method: 'POST',
+    });
+  },
+
+  /** GET /api/sniffer/packets — fetch dissected wirefeed packets */
+  snifferPackets(limit = 100, offset = 0): Promise<{
+    total: number;
+    packets: CapturedPacket[];
+    is_sniffing: boolean;
+    active_engine: SnifferEngineType;
+  }> {
+    return fetchJSON(`/api/sniffer/packets?limit=${limit}&offset=${offset}`);
+  },
+
+  /** GET /api/sniffer/metrics — fetch 60-second throughput & PPS timeline */
+  snifferMetrics(): Promise<{ metrics: TimelineMetricPoint[] }> {
+    return fetchJSON<{ metrics: TimelineMetricPoint[] }>('/api/sniffer/metrics');
+  },
+
+  /** POST /api/sniffer/clear — clear captured packets buffer */
+  clearSnifferPackets(): Promise<{ status: string }> {
+    return fetchJSON<{ status: string }>('/api/sniffer/clear', {
+      method: 'POST',
     });
   },
 };

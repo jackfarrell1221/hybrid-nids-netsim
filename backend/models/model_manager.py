@@ -66,10 +66,17 @@ class AlertDB:
     def _get_conn(self) -> sqlite3.Connection:
         """Return a thread-local connection, creating it if needed."""
         if not hasattr(self._local, "conn") or self._local.conn is None:
-            self._local.conn = sqlite3.connect(
-                self.db_path, check_same_thread=False
+            conn = sqlite3.connect(
+                self.db_path, check_same_thread=False, timeout=30.0
             )
-            self._local.conn.row_factory = sqlite3.Row
+            conn.row_factory = sqlite3.Row
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA busy_timeout=30000")
+                conn.execute("PRAGMA synchronous=NORMAL")
+            except Exception:
+                pass
+            self._local.conn = conn
         return self._local.conn
 
     def _init_db(self) -> None:

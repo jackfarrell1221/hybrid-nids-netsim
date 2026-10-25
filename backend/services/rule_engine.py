@@ -26,6 +26,7 @@ from backend.config import (
     RULE_DOS_RATIO_THRESHOLD,
     RULE_DOS_MIN_SRC_BYTES,
     RULE_DATA_THEFT_RATIO_THRESHOLD,
+    RULE_DATA_THEFT_MIN_DST_BYTES,
 )
 from backend.utils.logger import get_logger
 
@@ -36,7 +37,7 @@ logger = get_logger("rule_engine")
 # Each function accepts a sanitised flow dict and returns a result dict if the
 # rule fires, or None if it does not.
 
-def _rule_port_scan(flow: Dict[str, float]) -> Optional[Dict[str, Any]]:
+def _rule_port_scan(flow: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     RULE 1 — PORT SCAN
     Detects very short connections with negligible data exchange, 
@@ -63,7 +64,7 @@ def _rule_port_scan(flow: Dict[str, float]) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _rule_data_exfiltration(flow: Dict[str, float]) -> Optional[Dict[str, Any]]:
+def _rule_data_exfiltration(flow: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     RULE 2 — DATA EXFILTRATION
     Detects long-duration connections that transfer a huge volume of data 
@@ -88,12 +89,16 @@ def _rule_data_exfiltration(flow: Dict[str, float]) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _rule_dos(flow: Dict[str, float]) -> Optional[Dict[str, Any]]:
+def _rule_dos(flow: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     RULE 3 — DENIAL OF SERVICE (DoS)
     Detects traffic where the source sends vastly more data than the 
     destination responds with — typical of a flood-style DoS attack.
+    Requires minimum traffic volume to avoid false positives on tiny handshakes.
     """
+    if flow["src_bytes"] < RULE_DOS_MIN_SRC_BYTES:
+        return None
+
     ratio = flow["src_bytes"] / (flow["dst_bytes"] + 1)
     if ratio > RULE_DOS_RATIO_THRESHOLD:
         return {
@@ -102,21 +107,24 @@ def _rule_dos(flow: Dict[str, float]) -> Optional[Dict[str, Any]]:
             "detection_method": "RULE",
             "severity": "CRITICAL",
             "message": (
-                f"Detected by DOS rule because the traffic imbalance ratio "
-                f"src_bytes / (dst_bytes + 1) = {ratio:.1f} exceeds the "
-                f"threshold of {RULE_DOS_RATIO_THRESHOLD}. This suggests an "
-                f"inbound flood towards the destination host."
+                f"Detected by DOS rule because the source volume ({flow['src_bytes']:.0f} bytes) "
+                f"exceeds {RULE_DOS_MIN_SRC_BYTES:.0f} bytes and the traffic imbalance ratio "
+                f"src_bytes / (dst_bytes + 1) = {ratio:.1f} exceeds the threshold of {RULE_DOS_RATIO_THRESHOLD}."
             ),
         }
     return None
 
 
-def _rule_data_theft(flow: Dict[str, float]) -> Optional[Dict[str, Any]]:
+def _rule_data_theft(flow: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     RULE 4 — DATA THEFT
     Detects traffic where the destination returns vastly more data than 
     the source sent — indicating large unauthorised downloads.
+    Requires minimum download volume to avoid false positives on normal small responses.
     """
+    if flow["dst_bytes"] < RULE_DATA_THEFT_MIN_DST_BYTES:
+        return None
+
     ratio = flow["dst_bytes"] / (flow["src_bytes"] + 1)
     if ratio > RULE_DATA_THEFT_RATIO_THRESHOLD:
         return {
@@ -125,10 +133,9 @@ def _rule_data_theft(flow: Dict[str, float]) -> Optional[Dict[str, Any]]:
             "detection_method": "RULE",
             "severity": "HIGH",
             "message": (
-                f"Detected by DATA_THEFT rule because the traffic imbalance ratio "
-                f"dst_bytes / (src_bytes + 1) = {ratio:.1f} exceeds the "
-                f"threshold of {RULE_DATA_THEFT_RATIO_THRESHOLD}. This suggests "
-                f"a large unauthorised data download from the destination."
+                f"Detected by DATA_THEFT rule because destination outbound volume "
+                f"({flow['dst_bytes']:.0f} bytes) exceeds {RULE_DATA_THEFT_MIN_DST_BYTES:.0f} bytes and the traffic imbalance ratio "
+                f"dst_bytes / (src_bytes + 1) = {ratio:.1f} exceeds the threshold of {RULE_DATA_THEFT_RATIO_THRESHOLD}."
             ),
         }
     return None
@@ -146,7 +153,7 @@ RULES = [
 
 
 # ── Public interface ──────────────────────────────────────────────────────────
-def check(flow: Dict[str, float]) -> Optional[Dict[str, Any]]:
+def check(flow: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     Evaluate all rules against a network flow.
 
@@ -190,16 +197,18 @@ def get_rules_info() -> list:
         },
         {
             "name": "DOS",
-            "description": "Inbound traffic flood (src >> dst).",
+            "description": "Inbound traffic flood (src >> dst with minimum volume).",
             "thresholds": {
+                "src_bytes": f">= {RULE_DOS_MIN_SRC_BYTES:.0f} bytes",
                 "src_bytes / (dst_bytes + 1)": f"> {RULE_DOS_RATIO_THRESHOLD}",
             },
             "severity": "CRITICAL",
         },
         {
             "name": "DATA_THEFT",
-            "description": "Large unauthorised download (dst >> src).",
+            "description": "Large unauthorised download (dst >> src with minimum volume).",
             "thresholds": {
+                "dst_bytes": f">= {RULE_DATA_THEFT_MIN_DST_BYTES:.0f} bytes",
                 "dst_bytes / (src_bytes + 1)": f"> {RULE_DATA_THEFT_RATIO_THRESHOLD}",
             },
             "severity": "HIGH",

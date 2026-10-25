@@ -10,7 +10,9 @@ dist/
 build/
 
 # Data (keep local SQLite transient, but retain seed CSVs & reports)
-data/nids.db
+data/nids.db*
+data/*.db*
+results/custom_evaluation.json
 
 # Node
 node_modules/

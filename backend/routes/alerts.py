@@ -25,7 +25,7 @@ def get_alerts():
     Returns the most recent intrusion alerts.
     """
     try:
-        limit = int(request.args.get("limit", 100))
+        limit = min(500, max(1, request.args.get("limit", 100, type=int) or 100))
         alerts = get_alert_db().get_alerts(limit=limit)
         return jsonify({"alerts": alerts, "count": len(alerts)}), 200
     except Exception as exc:

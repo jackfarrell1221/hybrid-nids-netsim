@@ -18,6 +18,15 @@ import os
 _INITIALIZED = False
 
 
+class SafeStreamHandler(logging.StreamHandler):
+    """Stream handler that safely ignores writes to closed streams during test teardown."""
+    def emit(self, record):
+        try:
+            super().emit(record)
+        except (ValueError, IOError, OSError):
+            pass
+
+
 def setup_logging(level: str = "INFO") -> None:
     """Configure the root NIDS logger once at application start-up."""
     global _INITIALIZED
@@ -30,8 +39,8 @@ def setup_logging(level: str = "INFO") -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
+    # Console handler with closed-stream safety
+    console_handler = SafeStreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
 
     root_logger = logging.getLogger("nids")

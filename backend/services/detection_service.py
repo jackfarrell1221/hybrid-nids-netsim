@@ -27,7 +27,7 @@ from backend.utils.logger import get_logger
 logger = get_logger("detection_service")
 
 
-def detect_flow(flow: Dict[str, float], persist: bool = True) -> Dict[str, Any]:
+def detect_flow(flow: Dict[str, Any], persist: bool = True) -> Dict[str, Any]:
     """
     Main detection entry point.
 
@@ -76,9 +76,28 @@ def detect_flow(flow: Dict[str, float], persist: bool = True) -> Dict[str, Any]:
     result["dst_ip"] = dst_ip
 
     if result.get("status") == "INTRUSION":
+        target_ip = flow.get("target_ip")
+        if not target_ip:
+            is_local = (
+                src_ip in ("127.0.0.1", "::1", "localhost")
+                or src_ip.startswith("127.")
+            )
+            if not is_local:
+                try:
+                    import socket
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.connect(("8.8.8.8", 80))
+                    local_ip = s.getsockname()[0]
+                    s.close()
+                    if src_ip == local_ip:
+                        is_local = True
+                except Exception:
+                    pass
+            target_ip = dst_ip if is_local else src_ip
+
         result["mitigation"] = {
-            "iptables": f"iptables -A INPUT -s {src_ip} -j DROP",
-            "powershell": f'New-NetFirewallRule -DisplayName "NEXUS-Block-{src_ip}" -Direction Inbound -RemoteAddress {src_ip} -Action Block',
+            "iptables": f"iptables -A INPUT -s {target_ip} -j DROP",
+            "powershell": f'New-NetFirewallRule -DisplayName "NEXUS-Block-{target_ip}" -Direction Inbound -RemoteAddress {target_ip} -Action Block',
             "status": "RECOMMENDED"
         }
 

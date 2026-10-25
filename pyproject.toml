@@ -1,0 +1,5 @@
+[tool.pyright]
+extraPaths = [
+  "hybrid-nids-netsim",
+  "."
+]

@@ -54,10 +54,11 @@ RULE_EXFIL_MIN_DST_BYTES = float(os.environ.get("RULE_EXFIL_MIN_DST_BYTES", 10_0
 
 # Rule 3 — DoS
 RULE_DOS_RATIO_THRESHOLD = float(os.environ.get("RULE_DOS_RATIO_THRESHOLD", 10.0))
-RULE_DOS_MIN_SRC_BYTES   = float(os.environ.get("RULE_DOS_MIN_SRC_BYTES", 10_000.0))
+RULE_DOS_MIN_SRC_BYTES   = float(os.environ.get("RULE_DOS_MIN_SRC_BYTES", 1000.0))
 
 # Rule 4 — Data Theft
 RULE_DATA_THEFT_RATIO_THRESHOLD = float(os.environ.get("RULE_DATA_THEFT_RATIO_THRESHOLD", 10.0))
+RULE_DATA_THEFT_MIN_DST_BYTES   = float(os.environ.get("RULE_DATA_THEFT_MIN_DST_BYTES", 1000.0))
 
 # ── Dataset generator settings ────────────────────────────────────────────────
 DATASET_RANDOM_SEED   = int(os.environ.get("DATASET_RANDOM_SEED", 42))

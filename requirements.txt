@@ -6,6 +6,9 @@ Flask
 flask-cors
 gunicorn
 
+# ── Network Telemetry & Sniffing ──────────────────────────────────────────────
+psutil
+
 # ── Machine Learning ──────────────────────────────────────────────────────────
 scikit-learn
 numpy

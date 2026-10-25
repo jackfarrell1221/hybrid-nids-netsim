@@ -115,7 +115,7 @@ def evaluate_custom_dataset():
         for idx, row in df.iterrows():
             flow = {col: float(row[col]) for col in FEATURE_COLUMNS}
             t0 = time.monotonic()
-            res = detect_flow(flow)
+            res = detect_flow(flow, persist=False)
             lat_ms = (time.monotonic() - t0) * 1000
             latencies_ms.append(lat_ms)
 
