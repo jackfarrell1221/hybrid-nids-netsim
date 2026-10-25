@@ -1,99 +1,97 @@
 # NEXUS NIDS — Hybrid Network Intrusion Detection System
+### Enterprise SOC Analyst Workstation & Live Wire Ingestion Engine
 
 > **Academic & Security Disclaimer:**
-> *"This is a proof-of-concept Network Intrusion Detection System (NIDS) evaluated using a controlled synthetic network environment."*
+> *"This is a proof-of-concept Network Intrusion Detection System (NIDS) evaluated using controlled NetSim simulation traces and synthetic attack scenarios."*
 
 ---
 
 ## 1. Project Overview
 
-**NEXUS NIDS** is an enterprise-grade Security Operations Center (SOC) analyst workstation and hybrid network intrusion detection application. It combines:
+**NEXUS NIDS** is an enterprise-grade Security Operations Center (SOC) analyst workstation and hybrid network intrusion detection application. Designed to bridge high-speed deterministic traffic filtering with adaptive machine learning, it offers:
 
-1. **Deterministic Rule Engine:** Intercepts known, high-confidence attack vectors (Port Scans, DoS Floods, Data Exfiltration, Data Theft) with zero ML overhead and instant execution (< 1 ms).
-2. **Unsupervised Isolation Forest (ML Layer):** Identifies out-of-distribution anomalous network traffic that passes deterministic rules without requiring labeled attack samples during training.
-3. **Transparent SOC Operations Console:** Designed for SOC analysts and incident responders, providing full explainability, telemetry drawers, live flow inspection, attack scenario simulation, offline evaluation metrics, and system health monitoring.
+1. **Deterministic Rule Engine (Tier 1):** Intercepts known, high-confidence attack vectors (Port Scans, DoS Floods, Data Exfiltration, Data Theft) with zero machine learning overhead and sub-millisecond execution (< 1 ms).
+2. **Dual-Model ML Detection Layer (Tier 2):** 
+   - **Random Forest Classifier (Active):** High-precision supervised classification trained on NetSim simulation flow traces.
+   - **Isolation Forest (Anomaly Fallback):** Unsupervised outlier detection for out-of-distribution traffic patterns that bypass deterministic rules.
+3. **Live NIC Packet Ingestion & Wirefeed Workbench:** Windows-native dual-engine packet sniffer with Wireshark-style protocol dissection, raw hex inspection, cloud IP enrichment, and rolling throughput telemetry.
+4. **Transparent SOC Operations Console:** Dark/light mode analyst workstation with 9 dedicated monitoring views, alert triage workflows, interactive attack scenario simulators, and live system health probes.
 
 ---
 
-## 2. Architecture & Pipeline
+## 2. Architecture & Hybrid Pipeline
 
 ```
-                     Incoming Network Flow Event
-                 [duration, src_bytes, dst_bytes]
-                                │
-                                ▼
-                       Input Validation
-             (Type checking, boundary & range validation)
-                                │
-                                ▼
-                   Deterministic Rule Engine
-           ├── Rule 1: PORT_SCAN (duration < 1s, bytes < 100)
-           ├── Rule 2: DATA_EXFILTRATION (duration > 60s, dst > 10MB)
-           ├── Rule 3: DOS (src_bytes / (dst_bytes + 1) > 10)
-           └── Rule 4: DATA_THEFT (dst_bytes / (src_bytes + 1) > 10)
-                                │
-                  ┌─────────────┴─────────────┐
-            Match │                           │ No Match
-                  ▼                           ▼
-         RULE INTRUSION            Isolation Forest Model
-      (Immediate Alert Log)         (Unsupervised Anomaly)
-                  │                           │
-                  │                   ┌───────┴───────┐
-                  │         Score < 0 │               │ Score >= 0
-                  │       (Outlier -1)▼               ▼ (Inlier 1)
-                  │             ML INTRUSION        NORMAL
-                  │            ("ML_ANOMALY")      TRAFFIC
-                  │                   │               │
-                  └───────────┬───────┴───────────────┘
-                              ▼
-                 SQLite Audit Log (`nids.db`)
-               (Persists alerts & flow metrics)
-                              ▼
-                  JSON REST API Microservice
-                              ▼
-            NEXUS NIDS SOC Console (React + Vite)
+                     Incoming Network Flow / Live NIC Packet
+                    [duration, src_bytes, dst_bytes, IPs, Ports]
+                                        │
+                                        ▼
+                               Input Validation
+                    (Type safety, boundary & range checking)
+                                        │
+                                        ▼
+                          Deterministic Rule Engine (Tier 1)
+                  ├── Rule 1: PORT_SCAN (duration < 1s, bytes < 100)
+                  ├── Rule 2: DATA_EXFILTRATION (duration > 60s, dst > 10MB)
+                  ├── Rule 3: DOS (src_bytes / (dst_bytes + 1) > 10, src > 1000B)
+                  └── Rule 4: DATA_THEFT (dst_bytes / (src_bytes + 1) > 10, dst > 1000B)
+                                        │
+                         ┌──────────────┴──────────────┐
+                   Match │                             │ No Match
+                         ▼                             ▼
+                RULE INTRUSION               Machine Learning (Tier 2)
+             (Instant Alert Log)        ┌──────────────────────────────┐
+                         │              │ Random Forest Classifier     │
+                         │              │ + Isolation Forest Anomaly   │
+                         │              └──────────────┬───────────────┘
+                         │                             │
+                         │               ┌─────────────┴─────────────┐
+                         │     Outlier / │                           │ Normal /
+                         │     Intrusion ▼                           ▼ Inlier
+                         │         ML INTRUSION                   NORMAL
+                         │       ("ML_ANOMALY" / "DOS")          TRAFFIC
+                         │               │                           │
+                         └───────────────┼───────────────────────────┘
+                                         ▼
+                            SQLite Audit Log (`nids.db`)
+                         (Thread-safe WAL mode, alert triage)
+                                         ▼
+                            JSON REST API Microservice
+                                (Flask on port 5001)
+                                         ▼
+                      NEXUS NIDS SOC Console (React + Vite)
+                               (Vite on port 5174)
 ```
 
 ---
 
 ## 3. Key Capabilities & Features
 
-- **SOC Analyst Workstation Interface:** Dark mode default with light mode toggle, built with CSS variables (`--soc-bg`, `--soc-card`, `--soc-primary`, `--soc-critical`), semantic color system, Inter font family, and JetBrains Mono for technical telemetry.
-- **9 Dedicated Monitoring Views:**
-  1. **Security Overview:** Real-time KPI metrics, active system status indicators, recent alerts log, and attack distribution charts.
-  2. **Alerts Log:** Filterable alert log with severity tags, attack types, latency metrics, and slide-over telemetry drawer with explainability breakdown.
-  3. **Traffic Analysis:** Flow Inspector with common attack vector presets and interactive attack scenario simulator.
-  4. **Detection Rules:** Priority-ordered deterministic rule list with exact conditions and pipeline visualization.
-  5. **Detection Analytics:** Attack distribution charts, normal vs intrusion traffic split, and rule vs ML method breakdown.
-  6. **Model Evaluation:** Offline benchmark results with precision, recall, F1-score, confusion matrix, and classification report.
-  7. **ML Model Operations:** Isolation Forest configuration, model file telemetry, and single-click online model retraining.
-  8. **API & System Health:** Live status of API, Rule Engine, ML Model, and SQLite database with real-time HTTP endpoint latency probes.
-  9. **Settings:** Theme selection (Dark/Light), data polling interval settings, and application metadata.
-- **Zero Fake Data Policy:** All statistics, charts, tables, and metrics are computed dynamically from real API endpoints.
+### 🌐 Live Physical NIC Ingestion & Wirefeed Workbench
+- **Zero-Admin Connection Telemetry:** Windows-native continuous monitoring of TCP/UDP active sockets, remote host IPs, destination ports, TCP state transitions (`SYN_SENT`, `ESTABLISHED`, `TIME_WAIT`, `FIN_WAIT`), and real interface delta I/O bytes with **zero administrator privileges required**.
+- **Elevated Raw Socket Mode:** Automatically binds `socket.SOCK_RAW` with `SIO_RCVALL` for deep L2/L3 packet frame inspection when launched from an elevated administrator prompt.
+- **Physical Interface Prioritization:** Auto-detects and prioritizes active internet gateways (Wi-Fi or Ethernet default route) over virtual adapters, Hyper-V, and WSL bridges.
+- **Wireshark-Style Packet Dissector:**
+  - Full RFC 791 (IPv4) and RFC 793 (TCP/UDP) protocol tree dissection.
+  - Interactive modal with Frame, IPv4 header flags/TOS/TTL, and Transport layer sequence/acknowledgment numbers.
+  - Side-by-side hexadecimal offset dumps and ASCII payload decoder.
+- **Cloud Provider & Host Tagging:** Automatic non-blocking reverse-DNS resolution and cloud fingerprinting for **Microsoft Azure, AWS, Google Cloud, Cloudflare, Fastly, and Akamai**.
+- **Rolling Bandwidth & PPS Timeline:** 60-second real-time streaming area chart of inbound/outbound throughput (KB/s) and packets/sec (PPS) with anomaly alert markers.
+- **Real-Time Wire Filtering & Audio Alerts:** Instant protocol/IP/port/verdict search filter and Web Audio API synthesized alert chimes.
+
+### 🛡️ SOC Operations Console
+- **Security Overview:** Real-time KPI metrics, active pipeline indicators, recent intrusion stream, and attack distribution charts.
+- **Alerts Log & Triage:** Filterable log with severity tags, latency benchmarks, and slide-over telemetry drawer with explainability breakdown. Triage actions: `OPEN`, `ACKNOWLEDGED`, `RESOLVED`, `FALSE_POSITIVE`.
+- **Traffic Analysis & Attack Simulator:** Test live models with 20 pre-configured NetSim attack scenarios across DoS, Port Scan, Data Exfiltration, and Data Theft.
+- **Detection Rules:** Priority-ordered deterministic rule list with exact conditional logic and threshold visualizer.
+- **Detection Analytics:** Attack breakdown, traffic distribution, and Rule vs. ML detection ratios.
+- **Model Benchmark Evaluation:** Offline evaluation showing precision, recall, F1-score, and confusion matrix against 1,627 NetSim test samples.
+- **Model Operations:** Hyperparameter telemetry and single-click online model retraining.
+- **System Health Probes:** Live heartbeat probes for Flask API, Rule Engine, ML Model, and SQLite database.
 
 ---
 
-## 4. REST API Reference
-
-The Flask backend (`http://localhost:5000`) provides the following REST API endpoints:
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/health` | `GET` | Microservice liveness and model load status |
-| `/api/predict` | `POST` | Classifies single flow `[duration, src_bytes, dst_bytes]` |
-| `/api/train` | `POST` | Retrains Isolation Forest model on baseline data |
-| `/api/simulate` | `POST` | Generates simulated attack scenarios |
-| `/api/simulate/scenarios` | `GET` | Lists available attack simulation scenarios |
-| `/api/alerts` | `GET` | Fetches historical intrusion alerts (`?limit=N`) |
-| `/api/statistics` | `GET` | Returns aggregated flow & detection metrics |
-| `/api/rules` | `GET` | Returns active deterministic detection rules |
-| `/api/model/info` | `GET` | Returns Isolation Forest hyperparameters & file stats |
-| `/api/system/health` | `GET` | Provides component health status across system |
-| `/api/evaluation` | `GET` | Reads benchmark results from `results/evaluation.json` |
-
----
-
-## 5. ⚡ Quick Start (Run Locally in 2 Minutes)
+## 4. ⚡ Quick Start (Run Locally in 2 Minutes)
 
 ### Prerequisites
 - **Python 3.9+** ([python.org](https://www.python.org/))
@@ -107,7 +105,7 @@ The Flask backend (`http://localhost:5000`) provides the following REST API endp
 ### Option A: One-Click Launchers
 
 #### On Windows:
-Double-click `start.bat` or run:
+Double-click `start.bat` or run in terminal:
 ```cmd
 start.bat
 ```
@@ -143,6 +141,39 @@ npm run dev
 ```
 
 Open your browser to: **http://localhost:5174**
+
+---
+
+## 5. REST API Reference
+
+The Flask backend runs on **`http://127.0.0.1:5001`**:
+
+### Core Detection & Evaluation
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/health` | `GET` | Microservice liveness and model load status |
+| `/api/predict` | `POST` | Classifies single flow `[duration, src_bytes, dst_bytes]` |
+| `/api/train` | `POST` | Retrains ML model on baseline dataset |
+| `/api/simulate` | `POST` | Generates simulated attack scenarios |
+| `/api/simulate/scenarios` | `GET` | Lists available attack simulation scenarios (20 total) |
+| `/api/alerts` | `GET` | Fetches historical intrusion alerts (`?limit=N`) |
+| `/api/alerts/<id>/triage` | `PUT` | Updates alert triage status (`OPEN`, `ACKNOWLEDGED`, etc.) |
+| `/api/statistics` | `GET` | Returns aggregated flow & detection metrics |
+| `/api/rules` | `GET` | Returns active deterministic detection rules |
+| `/api/model/info` | `GET` | Returns ML hyperparameters & file telemetry |
+| `/api/system/health` | `GET` | Component health probes and latency benchmarks |
+| `/api/evaluation` | `GET` | Reads benchmark results from `results/evaluation.json` |
+
+### Live NIC Sniffing & Wire Ingestion
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/sniffer/status` | `GET` | Operational state, active engine, throughput & packet counts |
+| `/api/sniffer/interfaces` | `GET` | Prioritized list of physical network adapters |
+| `/api/sniffer/start` | `POST` | Starts live capture on default or selected interface |
+| `/api/sniffer/stop` | `POST` | Halts active packet capture |
+| `/api/sniffer/packets` | `GET` | Retrieves captured packets with Wireshark headers (`?limit=100`) |
+| `/api/sniffer/metrics` | `GET` | Rolling 60-second throughput (KB/s In/Out) & PPS timeline |
+| `/api/sniffer/clear` | `POST` | Clears in-memory packet buffer |
 
 ---
 
@@ -184,6 +215,6 @@ python scripts/evaluate.py
 
 ---
 
-## 7. License & Disclaimers
+## 8. License & Disclaimers
 
 Developed as an educational proof-of-concept Network Intrusion Detection System. Designed for controlled research, SOC training, and demonstration.
